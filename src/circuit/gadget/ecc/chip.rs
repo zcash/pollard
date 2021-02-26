@@ -8,6 +8,7 @@ use halo2::{
     poly::Rotation,
 };
 
+mod double;
 pub(crate) mod util;
 pub(crate) mod witness_point;
 
@@ -97,6 +98,17 @@ impl EccConfig {
             let x_p = meta.query_advice(x_p, Rotation::cur());
             let y_p = meta.query_advice(y_p, Rotation::cur());
             witness_point::create_gate::<C>(meta, q_point, x_p, y_p);
+        }
+
+        // Create point doubling gate
+        {
+            let q_double = meta.query_selector(q_double, Rotation::cur());
+            let x_a = meta.query_advice(x_a, Rotation::cur());
+            let y_a = meta.query_advice(y_a, Rotation::cur());
+            let x_p = meta.query_advice(x_p, Rotation::cur());
+            let y_p = meta.query_advice(y_p, Rotation::cur());
+
+            double::create_gate::<C>(meta, q_double, x_a, y_a, x_p, y_p);
         }
 
         EccConfig {
@@ -316,7 +328,14 @@ impl<C: CurveAffine> EccInstructions<C> for EccChip<C> {
     }
 
     fn double(layouter: &mut impl Layouter<Self>, a: &Self::Point) -> Result<Self::Point, Error> {
-        todo!()
+        let config = layouter.config().clone();
+
+        let point = layouter.assign_region(
+            || "point doubling",
+            |mut region| double::assign_region(a, &mut region, config.clone()),
+        )?;
+
+        Ok(point)
     }
 
     fn mul(

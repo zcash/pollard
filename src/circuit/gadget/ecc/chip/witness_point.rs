@@ -2,7 +2,7 @@ use super::{CellValue, EccChip, EccPoint};
 
 use group::Curve;
 use halo2::{
-    arithmetic::{CurveAffine, Field, FieldExt},
+    arithmetic::{CurveAffine, FieldExt},
     circuit::{Chip, Region},
     plonk::{ConstraintSystem, Error, Expression},
 };
