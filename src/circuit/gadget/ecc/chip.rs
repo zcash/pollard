@@ -5,9 +5,11 @@ use halo2::{
     arithmetic::{CurveAffine, FieldExt},
     circuit::{Cell, Chip, Layouter},
     plonk::{Advice, Column, ConstraintSystem, Error, Fixed, Permutation, Selector},
+    poly::Rotation,
 };
 
 pub(crate) mod util;
+pub(crate) mod witness_point;
 
 /// Configuration for the ECC chip
 #[derive(Clone, Debug)]
@@ -88,6 +90,14 @@ impl EccConfig {
 
         // Initialise some accumulator from a witnessed point
         let perm_sum = Permutation::new(meta, &[x_p.into(), y_p.into(), x_a.into(), y_a.into()]);
+
+        // Create witness point gate
+        {
+            let q_point = meta.query_selector(q_point, Rotation::cur());
+            let x_p = meta.query_advice(x_p, Rotation::cur());
+            let y_p = meta.query_advice(y_p, Rotation::cur());
+            witness_point::create_gate::<C>(meta, q_point, x_p, y_p);
+        }
 
         EccConfig {
             num_windows,
@@ -264,7 +274,14 @@ impl<C: CurveAffine> EccInstructions<C> for EccChip<C> {
         layouter: &mut impl Layouter<Self>,
         value: Option<C::CurveExt>,
     ) -> Result<Self::Point, Error> {
-        todo!()
+        let config = layouter.config().clone();
+
+        let point = layouter.assign_region(
+            || "witness point",
+            |mut region| witness_point::assign_region(value, &mut region, config.clone()),
+        )?;
+
+        Ok(point)
     }
 
     fn get_fixed(
