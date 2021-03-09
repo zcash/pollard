@@ -31,7 +31,7 @@ pub trait EccInstructions<C: CurveAffine>: Chip<Field = C::Base> {
     /// Witnesses the given point as a private input to the circuit.
     fn witness_point(
         layouter: &mut impl Layouter<Self>,
-        value: Option<C>,
+        value: Option<C::CurveExt>,
     ) -> Result<Self::Point, Error>;
 
     /// Gets a fixed point into the circuit.
@@ -89,7 +89,10 @@ pub struct Point<C: CurveAffine, EccChip: EccInstructions<C>> {
 
 impl<C: CurveAffine, EccChip: EccInstructions<C>> Point<C, EccChip> {
     /// Constructs a new point with the given value.
-    pub fn new(mut layouter: impl Layouter<EccChip>, value: Option<C>) -> Result<Self, Error> {
+    pub fn new(
+        mut layouter: impl Layouter<EccChip>,
+        value: Option<C::CurveExt>,
+    ) -> Result<Self, Error> {
         EccChip::witness_point(&mut layouter, value).map(|inner| Point { inner })
     }
 
