@@ -8,6 +8,7 @@ use halo2::{
     poly::Rotation,
 };
 
+pub(crate) mod add;
 mod double;
 pub(crate) mod util;
 pub(crate) mod witness_point;
@@ -109,6 +110,19 @@ impl EccConfig {
             let y_p = meta.query_advice(y_p, Rotation::cur());
 
             double::create_gate::<C>(meta, q_double, x_a, y_a, x_p, y_p);
+        }
+
+        // Create point addition gate
+        {
+            let q_add = meta.query_selector(q_add, Rotation::cur());
+            let x_p = meta.query_advice(x_p, Rotation::cur());
+            let y_p = meta.query_advice(y_p, Rotation::cur());
+            let x_q = meta.query_advice(x_a, Rotation::cur());
+            let y_q = meta.query_advice(y_a, Rotation::cur());
+            let x_a = meta.query_advice(x_a, Rotation::next());
+            let y_a = meta.query_advice(y_a, Rotation::next());
+
+            add::create_gate::<C>(meta, q_add, x_p, y_p, x_q, y_q, x_a, y_a);
         }
 
         EccConfig {
@@ -316,7 +330,14 @@ impl<C: CurveAffine> EccInstructions<C> for EccChip<C> {
         a: &Self::Point,
         b: &Self::Point,
     ) -> Result<Self::Point, Error> {
-        todo!()
+        let config = layouter.config().clone();
+
+        let point = layouter.assign_region(
+            || "point addition",
+            |mut region| add::assign_region(a, b, &mut region, config.clone()),
+        )?;
+
+        Ok(point)
     }
 
     fn add_complete(
