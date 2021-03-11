@@ -12,6 +12,7 @@ use halo2::{
 
 pub(crate) mod add;
 mod double;
+mod mul_fixed;
 pub(crate) mod util;
 pub(crate) mod witness_point;
 pub(crate) mod witness_scalar_fixed;
@@ -135,6 +136,28 @@ impl EccConfig {
             let y_a = meta.query_advice(y_a, Rotation::next());
 
             add::create_gate::<C>(meta, q_add, x_p, y_p, x_q, y_q, x_a, y_a);
+        }
+
+        // Create fixed-base scalar mul gate
+        {
+            let q_mul_fixed = meta.query_selector(q_mul_fixed, Rotation::cur());
+            let x_p = meta.query_advice(x_p, Rotation::cur());
+            let y_p = meta.query_advice(y_p, Rotation::cur());
+            let k = meta.query_advice(k, Rotation::cur());
+            let u = meta.query_advice(u, Rotation::cur());
+            let z = meta.query_fixed(fixed_z, Rotation::cur());
+
+            mul_fixed::create_gate::<C>(
+                meta,
+                number_base,
+                lagrange_coeffs,
+                q_mul_fixed,
+                x_p,
+                y_p,
+                k,
+                u,
+                z,
+            );
         }
 
         EccConfig {
@@ -285,7 +308,7 @@ impl<C: CurveAffine> Chip for EccChip<C> {
 
         let mut lagrange_coeffs = HashMap::<OrchardFixedPoints<C>, Vec<Vec<C::Base>>>::new();
         let mut z = HashMap::<OrchardFixedPoints<C>, Vec<C::Base>>::new();
-        let h = 8;
+        let h = 1 << config.window_width;
 
         {
             let hasher = C::CurveExt::hash_to_curve("z.cash:Orchard-Nullifier-K");
@@ -549,6 +572,16 @@ impl<C: CurveAffine> EccInstructions<C> for EccChip<C> {
         scalar: &Self::ScalarFixed,
         base: &Self::FixedPoint,
     ) -> Result<Self::Point, Error> {
-        todo!()
+        let config = layouter.config().clone();
+        let number_base = C::Scalar::from_u64((1 as u64) << config.window_width);
+
+        let point = layouter.assign_region(
+            || format!("Multiply {:?}", base.fixed_point),
+            |mut region| {
+                mul_fixed::assign_region(scalar, base, number_base, &mut region, config.clone())
+            },
+        )?;
+
+        Ok(point)
     }
 }
