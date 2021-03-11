@@ -428,12 +428,18 @@ fn test_vectors() {
 
     for (actual, expected) in round_constants
         .into_iter()
-        .flatten()
-        .map(|f| {
-            let mut bytes = f.to_bytes();
-            bytes.reverse();
-            format!("0x{}", hex::encode(&bytes))
+        .map(|round| {
+            round
+                .as_ref()
+                .iter()
+                .map(|f| {
+                    let mut bytes = f.to_bytes();
+                    bytes.reverse();
+                    format!("0x{}", hex::encode(&bytes))
+                })
+                .collect::<Vec<_>>()
         })
+        .flatten()
         .zip(ROUND_CONSTANTS.iter())
     {
         assert_eq!(&actual, expected);
@@ -441,12 +447,17 @@ fn test_vectors() {
 
     for (actual, expected) in mds
         .into_iter()
-        .flatten()
-        .map(|f| {
-            let mut bytes = f.to_bytes();
-            bytes.reverse();
-            format!("0x{}", hex::encode(&bytes))
+        .map(|row| {
+            row.as_ref()
+                .iter()
+                .map(|f| {
+                    let mut bytes = f.to_bytes();
+                    bytes.reverse();
+                    format!("0x{}", hex::encode(&bytes))
+                })
+                .collect::<Vec<_>>()
         })
+        .flatten()
         .zip(MDS.iter().flatten())
     {
         assert_eq!(&actual, expected);
