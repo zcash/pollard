@@ -251,6 +251,13 @@ impl DiversifierKey {
 #[derive(Debug)]
 pub struct Diversifier([u8; 11]);
 
+impl Diversifier {
+    /// Returns the byte array corresponding to this diversifier.
+    pub fn as_array(&self) -> &[u8; 11] {
+        &self.0
+    }
+}
+
 /// A key that provides the capability to detect and decrypt incoming notes from the block
 /// chain, without being able to spend the notes or detect when they are spent.
 ///
@@ -316,6 +323,11 @@ impl DiversifiedTransmissionKey {
     ///
     /// [orchardkeycomponents]: https://zips.z.cash/protocol/nu5.pdf#orchardkeycomponents
     fn derive(ivk: &IncomingViewingKey, d: &Diversifier) -> Option<Self> {
-        diversify_hash(&d.0).map(|g_d| DiversifiedTransmissionKey(ka_orchard(&ivk.0, &g_d)))
+        diversify_hash(d.as_array()).map(|g_d| DiversifiedTransmissionKey(ka_orchard(&ivk.0, &g_d)))
+    }
+
+    /// $repr_P(self)$
+    pub(crate) fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
     }
 }
