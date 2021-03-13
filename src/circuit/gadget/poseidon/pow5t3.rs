@@ -33,7 +33,6 @@ pub struct Pow5T3Config<F: FieldExt> {
     rc_b: [Column<Fixed>; WIDTH],
     s_full: Column<Fixed>,
     s_partial: Column<Fixed>,
-    s_final: Column<Fixed>,
 
     half_full_rounds: usize,
     half_partial_rounds: usize,
@@ -91,7 +90,6 @@ impl<F: FieldExt> Pow5T3Chip<F> {
 
         let s_full = meta.fixed_column();
         let s_partial = meta.fixed_column();
-        let s_final = meta.fixed_column();
 
         let alpha = [5, 0, 0, 0];
         let pow_5 = |v: Expression<F>| {
@@ -181,17 +179,6 @@ impl<F: FieldExt> Pow5T3Chip<F> {
             partial_round_linear(meta, 2)
         });
 
-        let final_full_round = |meta: &mut ConstraintSystem<F>, idx: usize| {
-            let cur = meta.query_advice(state[idx], Rotation::cur());
-            let next = meta.query_advice(state[idx], Rotation::next());
-            let rc = meta.query_fixed(rc_a[idx], Rotation::cur());
-            let s_final = meta.query_fixed(s_final, Rotation::cur());
-            s_final * (pow_5(cur + rc) - next)
-        };
-        meta.create_gate("final full round state_0", |meta| final_full_round(meta, 0));
-        meta.create_gate("final full round state_1", |meta| final_full_round(meta, 1));
-        meta.create_gate("final full round state_2", |meta| final_full_round(meta, 2));
-
         Pow5T3Config {
             state,
             state_permutation,
@@ -200,7 +187,6 @@ impl<F: FieldExt> Pow5T3Chip<F> {
             rc_b,
             s_full,
             s_partial,
-            s_final,
             half_full_rounds,
             half_partial_rounds,
             alpha,
@@ -254,21 +240,12 @@ impl<F: FieldExt> PoseidonInstructions for Pow5T3Chip<F> {
 
                 (0..config.half_full_rounds).fold(Ok(state), |res, r| {
                     res.and_then(|state| {
-                        if r < config.half_full_rounds - 1 {
-                            state.full_round(
-                                &mut region,
-                                &config,
-                                config.half_full_rounds + 2 * config.half_partial_rounds + r,
-                                config.half_full_rounds + config.half_partial_rounds + r,
-                            )
-                        } else {
-                            state.final_round(
-                                &mut region,
-                                &config,
-                                config.half_full_rounds + 2 * config.half_partial_rounds + r,
-                                config.half_full_rounds + config.half_partial_rounds + r,
-                            )
-                        }
+                        state.full_round(
+                            &mut region,
+                            &config,
+                            config.half_full_rounds + 2 * config.half_partial_rounds + r,
+                            config.half_full_rounds + config.half_partial_rounds + r,
+                        )
                     })
                 })
             },
@@ -388,31 +365,6 @@ impl<F: FieldExt> Pow5T3State<F> {
                     r_mid.map(|r| m[0][0] * r[0] + m[0][1] * r[1] + m[0][2] * r[2]),
                     r_mid.map(|r| m[1][0] * r[0] + m[1][1] * r[1] + m[1][2] * r[2]),
                     r_mid.map(|r| m[2][0] * r[0] + m[2][1] * r[1] + m[2][2] * r[2]),
-                ],
-            ))
-        })
-    }
-
-    fn final_round(
-        self,
-        region: &mut Region<Pow5T3Chip<F>>,
-        config: &Pow5T3Config<F>,
-        round: usize,
-        offset: usize,
-    ) -> Result<Self, Error> {
-        Self::round(region, config, round, offset, config.s_final, |_| {
-            let mut new_state = self
-                .0
-                .iter()
-                .zip(config.round_constants[round].iter())
-                .map(|(word, rc)| word.value.map(|v| (v + rc).pow(&config.alpha)));
-
-            Ok((
-                round + 1,
-                [
-                    new_state.next().unwrap(),
-                    new_state.next().unwrap(),
-                    new_state.next().unwrap(),
                 ],
             ))
         })
