@@ -16,6 +16,7 @@ mod mul_fixed;
 pub(crate) mod util;
 pub(crate) mod witness_point;
 pub(crate) mod witness_scalar_fixed;
+pub(crate) mod witness_scalar_var;
 
 /// Configuration for the ECC chip
 #[derive(Clone, Debug)]
@@ -105,6 +106,14 @@ impl EccConfig {
             let x_p = meta.query_advice(x_p, Rotation::cur());
             let y_p = meta.query_advice(y_p, Rotation::cur());
             witness_point::create_gate::<C>(meta, q_point, x_p, y_p);
+        }
+
+        // Create witness scalar_var gate
+        {
+            let q_scalar_var = meta.query_selector(q_scalar_var, Rotation::cur());
+            let k = meta.query_advice(k, Rotation::cur());
+
+            witness_scalar_var::create_gate::<C>(meta, q_scalar_var, k);
         }
 
         // Create witness scalar_fixed gate
@@ -478,7 +487,14 @@ impl<C: CurveAffine> EccInstructions<C> for EccChip<C> {
         layouter: &mut impl Layouter<Self>,
         value: Option<C::Scalar>,
     ) -> Result<Self::ScalarVar, Error> {
-        todo!()
+        let config = layouter.config().clone();
+
+        let scalar = layouter.assign_region(
+            || "witness scalar for variable-base mul",
+            |mut region| witness_scalar_var::assign_region(value, &mut region, config.clone()),
+        )?;
+
+        Ok(scalar)
     }
 
     /// Witnesses the given scalar as a private input to the circuit for fixed-based scalar mul.
