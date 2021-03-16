@@ -7,6 +7,8 @@ use halo2::{
     plonk::{Advice, Column, ConstraintSystem, Error, Fixed, Permutation, Selector},
 };
 
+pub(crate) mod util;
+
 /// Configuration for the ECC chip
 #[derive(Clone, Debug)]
 pub struct EccConfig {
