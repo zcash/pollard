@@ -13,6 +13,7 @@ use halo2::{
 pub(crate) mod add;
 pub(crate) mod add_complete;
 mod double;
+mod mul;
 mod mul_fixed;
 pub(crate) mod util;
 pub(crate) mod witness_point;
@@ -634,7 +635,14 @@ impl<C: CurveAffine> EccInstructions<C> for EccChip<C> {
         scalar: &Self::ScalarVar,
         base: &Self::Point,
     ) -> Result<Self::Point, Error> {
-        todo!()
+        let config = layouter.config().clone();
+
+        let point = layouter.assign_region(
+            || "variable-base mul",
+            |mut region| mul::assign_region(scalar, base, &mut region, config.clone()),
+        )?;
+
+        Ok(point)
     }
 
     fn mul_fixed(
