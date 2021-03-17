@@ -65,14 +65,15 @@ pub const S_PERSONALIZATION: &str = "z.cash:SinsemillaS";
 
 #[cfg(test)]
 mod tests {
+    use super::super::{Comm, HashDomain};
     use super::*;
     use crate::constants::{COMMIT_IVK_PERSONALIZATION, NOTE_COMMITMENT_PERSONALIZATION};
-    use halo2::{arithmetic::CurveExt, pasta::pallas};
+    use halo2::arithmetic::CurveExt;
 
     #[test]
     fn q_note_commitment_m() {
-        let hasher = pallas::Point::hash_to_curve(Q_PERSONALIZATION);
-        let point = hasher(&[NOTE_COMMITMENT_PERSONALIZATION.as_bytes(), b"-M"].concat());
+        let comm = Comm(NOTE_COMMITMENT_PERSONALIZATION);
+        let point = comm.Q();
         let (x, y, z) = point.jacobian_coordinates();
 
         assert_eq!(x, Q_NOTE_COMMITMENT_M_GENERATOR.0);
@@ -82,8 +83,8 @@ mod tests {
 
     #[test]
     fn q_commit_ivk_m() {
-        let hasher = pallas::Point::hash_to_curve(Q_PERSONALIZATION);
-        let point = hasher(&[COMMIT_IVK_PERSONALIZATION.as_bytes(), b"-M"].concat());
+        let comm = Comm(COMMIT_IVK_PERSONALIZATION);
+        let point = comm.Q();
         let (x, y, z) = point.jacobian_coordinates();
 
         assert_eq!(x, Q_COMMIT_IVK_M_GENERATOR.0);
