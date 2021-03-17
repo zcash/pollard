@@ -1,5 +1,8 @@
 //! Sinsemilla generators
-use halo2::pasta::pallas;
+use halo2::{
+    arithmetic::{CurveAffine, CurveExt},
+    pasta::pallas,
+};
 
 /// Number of bits of each message piece in SinsemillaHashToPoint
 pub const K: usize = 10;
@@ -61,7 +64,14 @@ pub const Q_COMMIT_IVK_M_GENERATOR: (pallas::Base, pallas::Base, pallas::Base) =
 /// SWU hash-to-curve personalization for Sinsemilla S generators
 pub const S_PERSONALIZATION: &str = "z.cash:SinsemillaS";
 
+/// Creates the Sinsemilla S generators used in each round of the Sinsemilla hash
 // TODO: inline the Sinsemilla S generators used in each round of the Sinsemilla hash
+pub fn sinsemilla_s_generators<C: CurveAffine>() -> Vec<C::CurveExt> {
+    let hasher = C::CurveExt::hash_to_curve(S_PERSONALIZATION);
+    (0..(1 << K))
+        .map(|j| hasher(&(j as usize).to_le_bytes()))
+        .collect()
+}
 
 #[cfg(test)]
 mod tests {
